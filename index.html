@@ -5,11 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Slither.io Local Prototype</title>
 <style>
-  body { margin:0; overflow:hidden; background:#111; }
+  body { margin:0; overflow:hidden; background:#111; font-family:Arial,sans-serif; }
   canvas { display:block; margin:0 auto; background:#111; }
+  #score { position:absolute; top:10px; left:10px; color:white; font-size:20px; z-index:10; }
 </style>
 </head>
 <body>
+<div id="score">Score: 0</div>
 <canvas id="gameCanvas"></canvas>
 <script>
 const canvas = document.getElementById('gameCanvas');
@@ -19,35 +21,28 @@ canvas.height = window.innerHeight;
 
 let mouse = {x: canvas.width/2, y: canvas.height/2};
 let snake = [];
-let snakeLength = 5;
 let segmentLength = 20;
 let speed = 4;
+let snakeGrowth = 0;
+let scoreEl = document.getElementById('score');
 let food = [];
 
 function randomFood() {
-    return {
-        x: Math.random() * canvas.width,
-        y: Math.random() * canvas.height,
-        radius: 6
-    };
+    return {x: Math.random()*canvas.width, y: Math.random()*canvas.height, radius:6};
 }
 
 // Initialize food
 for(let i=0;i<100;i++) food.push(randomFood());
 
-// Initialize snake segments
-for(let i=0;i<snakeLength;i++){
-    snake.push({x:canvas.width/2 - i*segmentLength, y:canvas.height/2});
-}
+// Initialize snake
+snake.push({x:canvas.width/2, y:canvas.height/2});
 
-// Track mouse/touch
 canvas.addEventListener('mousemove', e=>{ mouse.x=e.clientX; mouse.y=e.clientY; });
 canvas.addEventListener('touchmove', e=>{
     mouse.x=e.touches[0].clientX;
     mouse.y=e.touches[0].clientY;
 });
 
-// Distance helper
 function distance(a,b){ return Math.hypot(a.x-b.x,a.y-b.y); }
 
 function updateSnake(){
@@ -59,7 +54,7 @@ function updateSnake(){
     head.x += Math.cos(angle)*speed;
     head.y += Math.sin(angle)*speed;
 
-    // Wrap around edges
+    // Wrap edges
     if(head.x < 0) head.x = canvas.width;
     if(head.x > canvas.width) head.x = 0;
     if(head.y < 0) head.y = canvas.height;
@@ -79,13 +74,20 @@ function updateSnake(){
         }
     }
 
-    // Check collision with food
+    // Check food collision
     for(let i=food.length-1;i>=0;i--){
         if(distance(head,food[i]) < 12){
             food.splice(i,1);
-            snake.push({x:snake[snake.length-1].x, y:snake[snake.length-1].y});
+            snakeGrowth += 5; // grow smoothly
+            scoreEl.innerText = "Score: " + snake.length;
             food.push(randomFood());
         }
+    }
+
+    // Smooth growth
+    if(snakeGrowth > 0){
+        snake.push({x: snake[snake.length-1].x, y: snake[snake.length-1].y});
+        snakeGrowth--;
     }
 }
 
@@ -103,9 +105,10 @@ function draw(){
     // Draw snake
     for(let i=snake.length-1;i>=0;i--){
         let seg = snake[i];
-        ctx.fillStyle = `hsl(${i*10%360},100%,50%)`;
+        let radius = Math.max(8, segmentLength - i*0.1); // taper
+        ctx.fillStyle = `hsl(${i*7%360},100%,50%)`;
         ctx.beginPath();
-        ctx.arc(seg.x,seg.y,segmentLength/2,0,Math.PI*2);
+        ctx.arc(seg.x,seg.y,radius,0,Math.PI*2);
         ctx.fill();
     }
 }
